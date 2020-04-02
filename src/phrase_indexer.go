@@ -7,6 +7,13 @@ import (
 	"os"
 )
 
+func main() {
+	thread, start, end, limit, exclude := getArguments()
+
+	fmt.Printf("%s [ %u - %u ]\n", thread, start, end)
+	fmt.Printf("Limit to %u, exclude: %s\n", limit, exclude)
+}
+
 func getArguments() (string, uint, uint, uint, string) {
 	const sREQUIRED  = ""
 	const iREQUIRED = 0
@@ -27,11 +34,6 @@ func getArguments() (string, uint, uint, uint, string) {
 		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information")
 		os.Exit(1)
 	}
-}
 
-func main() {
-	thread, start, end, limit, exclude := getArguments()
-
-	fmt.Printf("%s [ %u - %u ]\n", thread, start, end)
-	fmt.Printf("Limit to %u, exclude: %s\n", limit, exclude)
+	return thread, start, end, limit, exclude
 }
