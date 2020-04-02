@@ -31,7 +31,7 @@ func getArguments() (string, uint, uint, uint, string) {
 
 	flag.Parse()
 	if end == 0 || thread == "" {
-		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information")
+		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
 		os.Exit(1)
 	}
 
