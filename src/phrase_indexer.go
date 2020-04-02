@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sort"
+	"log"
 )
 
 type phraseCnt struct {
@@ -18,7 +20,7 @@ type phraseCnt struct {
 }
 
 func main() {
-	threadURL, selector, _, start, end, _, nworkers := getArguments()
+	threadURL, selector, _, start, end, nworkers, limit := getArguments()
 
 	jobSize := end - start + 1
 	if nworkers > jobSize {
@@ -28,18 +30,30 @@ func main() {
 	collectorChan := make(chan *[]phraseCnt)
 	result := make(chan *map[string]uint32)
 
+	go collector(collectorChan, result)
 
 	jobs, wg := spawnWorkers(selector, nworkers, collectorChan)
 	initJobs(jobs, threadURL, start, end)
 
-	go collector(collectorChan, result)
+
 
 	wg.Wait()
 	close(collectorChan)
 
-	phraseCounts := <-result
+	printOutRanking( <-result , limit )
 
-	fmt.Printf("%v", phraseCounts)
+}
+
+func printOutRanking(phraseCounts *map[string]uint32, limit int) {
+	ranking := sortByPhraseCount(phraseCounts)
+
+	for i, elem := range *ranking {
+		if i >= limit {
+			break
+		}
+
+		fmt.Printf("%v \t\t\t% v\n", elem.count, elem.phrase)
+	}
 }
 
 func collector(input <-chan *[]phraseCnt, result chan<- *map[string]uint32) {
@@ -111,6 +125,7 @@ func worker(selector string, jobs <-chan string, collector chan<- *[]phraseCnt, 
 		}
 
 		collector <- &phrasesCountAsSlice
+		log.Printf("Job done: %v\n", job)
 	}
 }
 
@@ -136,7 +151,7 @@ func getHtml(resp *http.Response) *goquery.Document {
 	return doc
 }
 
-func getArguments() (threadURL, selector, exclude string, start, end, limit, workers uint) {
+func getArguments() (threadURL, selector, exclude string, start, end, workers uint, limit int) {
 	const sREQUIRED = ""
 	const iREQUIRED = 0
 	const DEFAULT_WORKERS = 100
@@ -152,7 +167,7 @@ func getArguments() (threadURL, selector, exclude string, start, end, limit, wor
 
 	flag.StringVar(&exclude, "exclude", "",
 		"[OPTIONAL] Path to file that contains phrases to exclude from output")
-	flag.UintVar(&limit, "limit", math.MaxUint32,
+	flag.IntVar(&limit, "limit", math.MaxInt32,
 		"[OPTIONAL] Limit output to top #{value} entries")
 	flag.UintVar(&workers, "workers", DEFAULT_WORKERS,
 		"[OPTIONAL] Number of workers involved to parsing thread sites")
@@ -196,4 +211,22 @@ func replacePolishDiacritics(text *string) {
 	for regexptr, repl := range replacements {
 		*text = regexptr.ReplaceAllLiteralString(*text, repl)
 	}
+}
+
+func sortByPhraseCount(phraseCounts *map[string]uint32) *[]phraseCnt {
+	ranking := make([]phraseCnt, len(*phraseCounts))
+
+	var i uint32 = 0
+	for phrase, cnt := range *phraseCounts {
+		ranking[i].phrase = phrase
+		ranking[i].count = cnt
+
+		i++
+	}
+
+	sort.Slice(ranking, func(i, j int) bool {
+		return ranking[i].count > ranking[j].count
+	})
+
+	return &ranking
 }
