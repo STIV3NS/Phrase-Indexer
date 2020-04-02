@@ -8,17 +8,17 @@ import (
 )
 
 func main() {
-	thread, exclude, start, end, limit := getArguments()
+	threadURL, exclude, start, end, limit := getArguments()
 
-	fmt.Printf("%s [ %u - %u ]\n", thread, start, end)
+	fmt.Printf("%s [ %u - %u ]\n", threadURL, start, end)
 	fmt.Printf("Limit to %u, exclude: %s\n", limit, exclude)
 }
 
-func getArguments() (thread, exclude string, start, end, limit uint) {
+func getArguments() (threadURL, exclude string, start, end, limit uint) {
 	const sREQUIRED  = ""
 	const iREQUIRED = 0
 
-	flag.StringVar(&thread, "thread", sREQUIRED, "[REQUIRED] URL to thread that is meant to be indexed")
+	flag.StringVar(&threadURL, "threadURL", sREQUIRED, "[REQUIRED] URL to threadURL that is meant to be indexed")
 	flag.UintVar(&start, "start", 1, "[OPTIONAL] Page number on which to start indexing")
 	flag.UintVar(&end, "end", iREQUIRED, "[REQUIRED] Page number on which to end indexing")
 
@@ -27,7 +27,7 @@ func getArguments() (thread, exclude string, start, end, limit uint) {
 
 
 	flag.Parse()
-	if end == 0 || thread == "" {
+	if end == 0 || threadURL == "" {
 		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
 		os.Exit(1)
 	}
