@@ -148,7 +148,7 @@ func getArguments() (threadURL, selector, exclude string, start, end, workers ui
 	const DEFAULT_WORKERS = 100
 
 	flag.StringVar(&threadURL, "threadURL", sREQUIRED,
-		"[REQUIRED] URL to threadURL that is meant to be indexed")
+		"[REQUIRED] URL to thread that is meant to be indexed")
 	flag.StringVar(&selector, "selector", sREQUIRED,
 		"[REQUIRED] Selector for searching for interesting parts of the document")
 	flag.UintVar(&start, "start", 1,
