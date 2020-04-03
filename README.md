@@ -12,7 +12,7 @@ $ make
 $ ./phrase_indexer --help
 Usage of ./phrase_indexer:
   -threadURL string
-      [REQUIRED] URL to threadURL that is meant to be indexed
+      [REQUIRED] URL to thread that is meant to be indexed
   -selector string
     	[REQUIRED] Selector for searching for interesting parts of the document
   -start uint
