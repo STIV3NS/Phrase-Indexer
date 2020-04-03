@@ -117,7 +117,10 @@ func worker(selector string, jobs <-chan string, collector chan<- *map[string]ui
 
 		})
 
-		resp.Body.Close()
+		err := resp.Body.Close()
+		if err != nil {
+			panic(err)
+		}
 
 		collector <- &phrasesCount
 		log.Printf("Job done: %v\n", job)
