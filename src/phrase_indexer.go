@@ -23,12 +23,7 @@ type phraseCnt struct {
 func main() {
 	threadURL, selector, exclude, start, end, nworkers, limit := getArguments()
 
-	jobSize := end - start + 1
-	if nworkers > jobSize {
-		nworkers = jobSize
-	}
-
-	collectorChan := make(chan *[]phraseCnt)
+	collectorChan := make(chan *map[string]uint32)
 	result := make(chan *map[string]uint32)
 
 	go collector(collectorChan, result)
@@ -61,19 +56,19 @@ func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string)
 	}
 }
 
-func collector(input <-chan *[]phraseCnt, result chan<- *map[string]uint32) {
+func collector(input <-chan *map[string]uint32, result chan<- *map[string]uint32) {
 	state := make(map[string]uint32)
 
 	for iteration := range input {
-		for _, tuple := range *iteration {
-			state[tuple.phrase] += tuple.count
+		for phrase, count := range *iteration {
+			state[phrase] += count
 		}
 	}
 
 	result <- &state
 }
 
-func spawnWorkers(selector string, howMany uint, collector chan<- *[]phraseCnt) (
+func spawnWorkers(selector string, howMany uint, collector chan<- *map[string]uint32) (
 	jobs chan string, wg *sync.WaitGroup) {
 	jobs = make(chan string)
 
@@ -96,13 +91,12 @@ func initJobs(jobs chan<- string, threadURL string, start uint, end uint) {
 	close(jobs)
 }
 
-func worker(selector string, jobs <-chan string, collector chan<- *[]phraseCnt, wg *sync.WaitGroup) {
+func worker(selector string, jobs <-chan string, collector chan<- *map[string]uint32, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for job := range jobs {
 		resp := getResponse(job)
 		doc := *getHtml(resp)
-		defer resp.Body.Close()
 
 		phrasesCount := make(map[string]uint32)
 
@@ -119,13 +113,9 @@ func worker(selector string, jobs <-chan string, collector chan<- *[]phraseCnt, 
 
 		})
 
-		var phrasesCountAsSlice []phraseCnt
+		resp.Body.Close()
 
-		for phrase, cnt := range phrasesCount {
-			phrasesCountAsSlice = append(phrasesCountAsSlice, phraseCnt{ phrase, cnt })
-		}
-
-		collector <- &phrasesCountAsSlice
+		collector <- &phrasesCount
 		log.Printf("Job done: %v\n", job)
 	}
 }
@@ -184,6 +174,11 @@ func getArguments() (threadURL, selector, exclude string, start, end, workers ui
 	if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
 		fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
 		os.Exit(1)
+	}
+
+	jobSize := end - start + 1
+	if workers > jobSize {
+		workers = jobSize
 	}
 
 	return
