@@ -83,11 +83,7 @@ func spawnWorkers(selector string, howMany uint, collector chan<- *[]phraseCnt) 
 	var i uint
 	for i = 0; i < howMany; i++ {
 		wg.Add(1)
-		go worker(
-			selector,
-			jobs,
-			collector,
-			wg)
+		go worker(selector, jobs, collector, wg)
 	}
 
 	return
@@ -193,7 +189,7 @@ func getArguments() (threadURL, selector, exclude string, start, end, workers ui
 	return
 }
 
-func normalize (text *string) {
+func normalize(text *string) {
 	nonWord, _ := regexp.Compile("[0-9`~!@#$%^&*()_+-=\\[\\]{}|'\";:/.,><]")
 	*text = nonWord.ReplaceAllLiteralString(*text, "")
 	*text = strings.ToLower(*text)
