@@ -23,21 +23,14 @@ type phraseCnt struct {
 func main() {
 	threadURL, selector, exclude, start, end, nworkers, limit := getArguments()
 
-	collectorChan := make(chan *map[string]uint32)
-	result := make(chan *map[string]uint32)
-
-	go collector(collectorChan, result)
-
+	collectorChan, result := spawnCollector()
 	jobs, wg := spawnWorkers(selector, nworkers, collectorChan)
 	initJobs(jobs, threadURL, start, end)
-
-
 
 	wg.Wait()
 	close(collectorChan)
 
 	printOutRanking( <-result, limit, exclude )
-
 }
 
 func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string) {
@@ -54,6 +47,17 @@ func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string)
 
 		fmt.Printf("%v \t\t\t% v\n", elem.count, elem.phrase)
 	}
+}
+
+func spawnCollector() (collectorChan chan *map[string]uint32, result chan *map[string]uint32) {
+	const COLLECTOR_BUFFER_SIZE = 20
+
+	collectorChan = make(chan *map[string]uint32, COLLECTOR_BUFFER_SIZE)
+	result = make(chan *map[string]uint32)
+
+	go collector(collectorChan, result)
+
+	return
 }
 
 func collector(input <-chan *map[string]uint32, result chan<- *map[string]uint32) {
