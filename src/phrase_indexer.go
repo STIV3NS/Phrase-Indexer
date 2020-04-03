@@ -127,7 +127,7 @@ func getResponse(site string) *http.Response {
 		panic(err)
 	}
 	if resp.StatusCode != 200 {
-		panic(fmt.Sprintf("Got response status code equal %d. Aborting.",resp.StatusCode))
+		panic(fmt.Sprintf("Response from %v has status code %v. Aborting.", site, resp.StatusCode))
 	}
 
 	return resp
