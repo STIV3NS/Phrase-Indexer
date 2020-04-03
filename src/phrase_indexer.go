@@ -4,15 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
-	"sort"
-	"log"
-	"io/ioutil"
 )
 
 type phraseCnt struct {
@@ -20,17 +20,27 @@ type phraseCnt struct {
 	count  uint32
 }
 
+type arguments struct {
+	threadUrl string
+	selector  string
+	exclude   string
+	startAt	  uint
+	endAt	  uint
+	limit 	  int
+	nworkers  uint
+}
+
 func main() {
-	threadURL, selector, exclude, start, end, nworkers, limit := getArguments()
+	args := getArguments()
 
 	collectorChan, result := spawnCollector()
-	jobs, wg := spawnWorkers(selector, nworkers, collectorChan)
-	initJobs(jobs, threadURL, start, end)
+	jobs, wg := spawnWorkers(args.selector, args.nworkers, collectorChan)
+	initJobs(jobs, args.threadUrl, args.startAt, args.endAt)
 
 	wg.Wait()
 	close(collectorChan)
 
-	printOutRanking( <-result, limit, exclude )
+	printOutRanking( <-result, args.limit, args.exclude )
 }
 
 func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string) {
@@ -149,48 +159,6 @@ func getHtml(resp *http.Response) *goquery.Document {
 	return doc
 }
 
-func getArguments() (threadURL, selector, exclude string, start, end, workers uint, limit int) {
-	const sREQUIRED = ""
-	const iREQUIRED = 0
-	const DEFAULT_WORKERS = 100
-
-	flag.StringVar(&threadURL, "threadURL", sREQUIRED,
-		"[REQUIRED] URL to thread that is meant to be indexed")
-	flag.StringVar(&selector, "selector", sREQUIRED,
-		"[REQUIRED] Selector for searching for interesting parts of the document")
-	flag.UintVar(&start, "start", 1,
-		"[OPTIONAL] Page number on which to start indexing")
-	flag.UintVar(&end, "end", iREQUIRED,
-		"[REQUIRED] Page number on which to end indexing")
-
-	flag.StringVar(&exclude, "exclude", "",
-		"[OPTIONAL] Path to file that contains phrases to exclude from output")
-	flag.IntVar(&limit, "limit", math.MaxInt32,
-		"[OPTIONAL] Limit output to top #{value} entries")
-	flag.UintVar(&workers, "workers", DEFAULT_WORKERS,
-		"[OPTIONAL] Number of workers involved to parsing thread sites")
-
-	flag.Parse()
-
-	if end == 0 || threadURL == "" || selector == ""  {
-		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
-		os.Exit(1)
-	}
-
-	info, err2 := os.Stat(exclude)
-	if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
-		fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
-		os.Exit(1)
-	}
-
-	jobSize := end - start + 1
-	if workers > jobSize {
-		workers = jobSize
-	}
-
-	return
-}
-
 func normalize(text *string) {
 	nonWord, _ := regexp.Compile("[0-9`~!@#$%^&*()_+-=\\[\\]{}|'\";:/.,><]")
 	*text = nonWord.ReplaceAllLiteralString(*text, "")
@@ -277,4 +245,50 @@ func getExclusions(filePath string) (exclusions map[string]bool) {
 	}
 
 	return
+}
+
+func getArguments() arguments {
+	const sREQUIRED = ""
+	const iREQUIRED = 0
+	const DEFAULT_WORKERS = 100
+
+	var threadUrl, selector, exclude string
+	var startAt, endAt, workers uint
+	var limit int
+
+	flag.StringVar(&threadUrl, "threadUrl", sREQUIRED,
+		"[REQUIRED] URL to thread that is meant to be indexed")
+	flag.StringVar(&selector, "selector", sREQUIRED,
+		"[REQUIRED] Selector for searching for interesting parts of the document")
+	flag.UintVar(&startAt, "startAt", 1,
+		"[OPTIONAL] Page number on which to start indexing")
+	flag.UintVar(&endAt, "endAt", iREQUIRED,
+		"[REQUIRED] Page number on which to end indexing")
+
+	flag.StringVar(&exclude, "exclude", "",
+		"[OPTIONAL] Path to file that contains phrases to exclude from output")
+	flag.IntVar(&limit, "limit", math.MaxInt32,
+		"[OPTIONAL] Limit output to top #{value} entries")
+	flag.UintVar(&workers, "workers", DEFAULT_WORKERS,
+		"[OPTIONAL] Number of workers involved to parsing thread sites")
+
+	flag.Parse()
+
+	if endAt < startAt || threadUrl == "" || selector == ""  {
+		fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
+		os.Exit(1)
+	}
+
+	info, err2 := os.Stat(exclude)
+	if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
+		fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
+		os.Exit(1)
+	}
+
+	jobSize := endAt - startAt + 1
+	if workers > jobSize {
+		workers = jobSize
+	}
+
+	return arguments{threadUrl, selector, exclude, startAt, endAt, limit, workers}
 }

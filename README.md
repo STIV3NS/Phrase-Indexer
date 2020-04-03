@@ -11,13 +11,13 @@ $ make
 ```bash
 $ ./phrase_indexer --help
 Usage of ./phrase_indexer:
-  -threadURL string
-      [REQUIRED] URL to thread that is meant to be indexed
+  -threadUrl string
+      [REQUIRED] Url to thread that is meant to be indexed
   -selector string
     	[REQUIRED] Selector for searching for interesting parts of the document
-  -start uint
+  -startAt uint
     	[OPTIONAL] Page number on which to start indexing (default 1)
-  -end uint
+  -endAt uint
     	[REQUIRED] Page number on which to end indexing
   -exclude string
     	[OPTIONAL] Path to file that contains phrases to exclude from output
@@ -32,8 +32,8 @@ Usage of ./phrase_indexer:
 #### Example
 ```bash
 $ ./phrase_indexer \
--threadURL="https://4programmers.net/Forum/Off-Topic/141606-programistyczne_wtf_jakie_was_spotkaly?page=" \
--selector=".online, .offline" -end=100 -limit=10
+-threadUrl="https://4programmers.net/Forum/Off-Topic/141606-programistyczne_wtf_jakie_was_spotkaly?page=" \
+-selector=".online, .offline" -endAt=100 -limit=10
 
 218 			rnd
 128 			somekind
