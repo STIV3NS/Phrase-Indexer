@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sort"
 	"log"
+	"io/ioutil"
 )
 
 type phraseCnt struct {
@@ -20,7 +21,7 @@ type phraseCnt struct {
 }
 
 func main() {
-	threadURL, selector, _, start, end, nworkers, limit := getArguments()
+	threadURL, selector, exclude, start, end, nworkers, limit := getArguments()
 
 	jobSize := end - start + 1
 	if nworkers > jobSize {
@@ -40,12 +41,16 @@ func main() {
 	wg.Wait()
 	close(collectorChan)
 
-	printOutRanking( <-result , limit )
+	printOutRanking( <-result, limit, exclude )
 
 }
 
-func printOutRanking(phraseCounts *map[string]uint32, limit int) {
+func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string) {
 	ranking := sortByPhraseCount(phraseCounts)
+
+	if strings.Compare(exclude, "") != 0 {
+		applyExclusions(&ranking, exclude)
+	}
 
 	for i, elem := range *ranking {
 		if i >= limit {
@@ -179,6 +184,12 @@ func getArguments() (threadURL, selector, exclude string, start, end, workers ui
 		os.Exit(1)
 	}
 
+	info, err2 := os.Stat(exclude)
+	if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
+		fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
+		os.Exit(1)
+	}
+
 	return
 }
 
@@ -229,4 +240,43 @@ func sortByPhraseCount(phraseCounts *map[string]uint32) *[]phraseCnt {
 	})
 
 	return &ranking
+}
+
+func filter(src *[]phraseCnt, predicate func(phraseCnt) bool) *[]phraseCnt {
+	filtered := make([]phraseCnt, 0)
+
+	for _, elem := range *src {
+		if predicate(elem) {
+			filtered = append(filtered, elem)
+		}
+	}
+
+	return &filtered
+}
+
+func applyExclusions(ranking **[]phraseCnt, exclude string) {
+	exclusions := getExclusions(exclude)
+
+	*ranking = filter(*ranking, func(elem phraseCnt) bool {
+		_, present := exclusions[elem.phrase]
+		return !present
+	})
+}
+
+func getExclusions(filePath string) (exclusions map[string]bool) {
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+
+	exclusions = make(map[string]bool)
+
+	str := string(data)
+	normalize(&str)
+
+	for _, str := range strings.Fields(str) {
+		exclusions[str] = true
+	}
+
+	return
 }
