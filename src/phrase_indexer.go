@@ -160,7 +160,7 @@ func getHtml(resp *http.Response) *goquery.Document {
 }
 
 func normalize(text *string) {
-	nonWord, _ := regexp.Compile("[0-9`~!@#$%^&*()_+-=\\[\\]{}|'\";:/.,><]")
+	nonWord, _ := regexp.Compile("[0-9`~!@#$%^?&*()_+-=\\[\\]{}|'\";:/.,><]")
 	*text = nonWord.ReplaceAllLiteralString(*text, "")
 	*text = strings.ToLower(*text)
 	replacePolishDiacritics(text)
