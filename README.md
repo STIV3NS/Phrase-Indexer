@@ -1,5 +1,5 @@
 # Phrase-Indexer
-Tool for creating a ranking of phrases (under a given selector) in a forum thread
+Tool for generating a ranking of phrases (under a given selector) in a forum thread (or other 'iterable' page)
 
 #### Build
 
