@@ -3,7 +3,6 @@ package main
 import (
     "flag"
     "fmt"
-    "io/ioutil"
     "log"
     "math"
     "os"
@@ -26,6 +25,52 @@ type arguments struct {
     endAt     uint
     limit     int
     nworkers  uint
+}
+
+func getArguments() arguments {
+    const sREQUIRED = ""
+    const iREQUIRED = 0
+    const DEFAULT_WORKERS = 100
+    
+    var threadUrl, selector, exclude string
+    var startAt, endAt, workers uint
+    var limit int
+    
+    flag.StringVar(&threadUrl, "threadUrl", sREQUIRED,
+                    "[REQUIRED] URL to thread that is meant to be indexed")
+    flag.StringVar(&selector, "selector", sREQUIRED,
+                    "[REQUIRED] Selector for searching for interesting parts of the document")
+    flag.UintVar(&startAt, "startAt", 1,
+                    "[OPTIONAL] Page number on which to start indexing")
+    flag.UintVar(&endAt, "endAt", iREQUIRED,
+                    "[REQUIRED] Page number on which to end indexing")
+
+    flag.StringVar(&exclude, "exclude", "",
+                    "[OPTIONAL] Path to file that contains phrases to exclude from output")
+    flag.IntVar(&limit, "limit", math.MaxInt32,
+                    "[OPTIONAL] Limit output to top #{value} entries")
+    flag.UintVar(&workers, "workers", DEFAULT_WORKERS,
+                    "[OPTIONAL] Number of workers involved to parsing thread sites")
+
+    flag.Parse()
+    
+    if endAt < startAt || threadUrl == "" || selector == ""  {
+        fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
+        os.Exit(1)
+    }
+
+    info, err2 := os.Stat(exclude)
+    if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
+        fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
+        os.Exit(1)
+    }
+
+    jobSize := endAt - startAt + 1
+    if workers > jobSize {
+        workers = jobSize
+    }
+
+    return arguments{threadUrl, selector, exclude, startAt, endAt, limit, workers}
 }
 
 func main() {
@@ -150,78 +195,4 @@ func sortByPhraseCount(phraseCounts *map[string]uint32) *[]phraseCnt {
     })
 
     return &ranking
-}
-
-
-func applyExclusions(ranking **[]phraseCnt, exclude string) {
-    exclusions := getExclusions(exclude)
-    
-    *ranking = filter(*ranking, func(elem phraseCnt) bool {
-        _, present := exclusions[elem.phrase]
-        return !present
-    })
-}
-
-func getExclusions(filePath string) (exclusions map[string]bool) {
-    data, err := ioutil.ReadFile(filePath)
-    if err != nil {
-        panic(err)
-    }
-    
-    exclusions = make(map[string]bool)
-    
-    str := string(data)
-    normalize(&str)
-    
-    for _, str := range strings.Fields(str) {
-        exclusions[str] = true
-    }
-    
-    return
-}
-
-func getArguments() arguments {
-    const sREQUIRED = ""
-    const iREQUIRED = 0
-    const DEFAULT_WORKERS = 100
-    
-    var threadUrl, selector, exclude string
-    var startAt, endAt, workers uint
-    var limit int
-    
-    flag.StringVar(&threadUrl, "threadUrl", sREQUIRED,
-                    "[REQUIRED] URL to thread that is meant to be indexed")
-    flag.StringVar(&selector, "selector", sREQUIRED,
-                    "[REQUIRED] Selector for searching for interesting parts of the document")
-    flag.UintVar(&startAt, "startAt", 1,
-                    "[OPTIONAL] Page number on which to start indexing")
-    flag.UintVar(&endAt, "endAt", iREQUIRED,
-                    "[REQUIRED] Page number on which to end indexing")
-
-    flag.StringVar(&exclude, "exclude", "",
-                    "[OPTIONAL] Path to file that contains phrases to exclude from output")
-    flag.IntVar(&limit, "limit", math.MaxInt32,
-                    "[OPTIONAL] Limit output to top #{value} entries")
-    flag.UintVar(&workers, "workers", DEFAULT_WORKERS,
-                    "[OPTIONAL] Number of workers involved to parsing thread sites")
-
-    flag.Parse()
-    
-    if endAt < startAt || threadUrl == "" || selector == ""  {
-        fmt.Fprintf(os.Stderr, "Missing arguments; --help for more information\n")
-        os.Exit(1)
-    }
-
-    info, err2 := os.Stat(exclude)
-    if strings.Compare(exclude, "") != 0 && (os.IsNotExist(err2) || info.IsDir()) {
-        fmt.Fprintf(os.Stderr, "Path: %v does not exist or is a directory.\n", exclude)
-        os.Exit(1)
-    }
-
-    jobSize := endAt - startAt + 1
-    if workers > jobSize {
-        workers = jobSize
-    }
-
-    return arguments{threadUrl, selector, exclude, startAt, endAt, limit, workers}
 }
