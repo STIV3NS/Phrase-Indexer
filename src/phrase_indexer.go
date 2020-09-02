@@ -76,7 +76,7 @@ func getArguments() arguments {
 func main() {
     args := getArguments()
     
-    collectorChan, result := spawnCollector()
+    collectorChan, result := spawnCollector(args.nworkers)
     jobs, wg := spawnWorkers(args.selector, args.nworkers, collectorChan)
     initJobs(jobs, args.threadUrl, args.startAt, args.endAt)
     
@@ -102,10 +102,8 @@ func printOutRanking(phraseCounts *map[string]uint32, limit int, exclude string)
     }
 }
 
-func spawnCollector() (collectorChan chan *map[string]uint32, result chan *map[string]uint32) {
-    const COLLECTOR_BUFFER_SIZE = 20
-    
-    collectorChan = make(chan *map[string]uint32, COLLECTOR_BUFFER_SIZE)
+func spawnCollector(bufferSize uint) (collectorChan chan *map[string]uint32, result chan *map[string]uint32) {
+    collectorChan = make(chan *map[string]uint32, bufferSize)
     result = make(chan *map[string]uint32)
     
     go collector(collectorChan, result)
@@ -127,7 +125,9 @@ func collector(input <-chan *map[string]uint32, result chan<- *map[string]uint32
 
 func spawnWorkers(selector string, howMany uint, collector chan<- *map[string]uint32) (
     jobs chan string, wg *sync.WaitGroup) {
-        jobs = make(chan string)
+        
+        bufferSize := howMany
+        jobs = make(chan string, bufferSize)
         
         var _wg sync.WaitGroup
         wg = &_wg
